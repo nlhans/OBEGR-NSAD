@@ -1,6 +1,9 @@
+Foto's bron: https://github.com/reschman/ikea-matrix-led-hack?tab=readme-ov-file
 
 Dit document beschrijft hoe je de IKEA OBEGRÄNSAD kan modden om met een Raspberry Pi Pico te laten werken. De IKEA OBEGRÄNSAD is een 16x16 LED matrix met witte LEDs die je aan en uit kan zetten. Als we deze modden kunnen we hier zelf leuke animaties op laten zien.
+
 [foto wenselijk]
+
 ## Wat zit er in?
 Als je de IKEA OBEGRÄNSAD openmaakt, dan zal je zien dat er 4 losse borden zitten die met elkaar zijn doorverbonden:
 
