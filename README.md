@@ -2,7 +2,7 @@ Foto's bron: https://github.com/reschman/ikea-matrix-led-hack?tab=readme-ov-file
 
 Dit document beschrijft hoe je de IKEA OBEGRÄNSAD kan modden om met een Raspberry Pi Pico te laten werken. De IKEA OBEGRÄNSAD is een 16x16 LED matrix met witte LEDs die je aan en uit kan zetten. Als we deze modden kunnen we hier zelf leuke animaties op laten zien.
 
-[foto wenselijk]
+![Weergave met 256 grijswaarden](https://github.com/nlhans/OBEGR-NSAD/blob/main/img/20151203_150000.jpg?raw=true)
 
 ## Wat zit er in?
 Als je de IKEA OBEGRÄNSAD openmaakt, dan zal je zien dat er 4 losse borden zitten die met elkaar zijn doorverbonden:
@@ -41,12 +41,15 @@ De signalen zien er dan zo uit:
 
 ## Signalen aansluiten
 De signalen die we op de Pico dus moeten aansluiten zijn:
-- VCC
-- GND
-- CLA
-- CLK
-- DI
-- EN
+- VCC (Bruin)
+- GND (Blauw)
+- CLA (Rood)
+- CLK (Oranje)
+- DI (Geel)
+- EN (Groen)
+
+De bedrading is dan als volgt aangesloten op de RP2040:
+![LED chain](https://github.com/nlhans/OBEGR-NSAD/blob/main/img/20251203_150131.jpg?raw=true)
 
 **LET OP! De VCC op deze matrix borden zijn 5V. De Raspberry Pico werkt enkel op 3.3V.**  We kunnen wel digitale signalen naar de borden sturen, en meestal zal een 5V apparaat wel 3.3V signalen begrijpen. Echter let goed op hoe je de borden voedingspanning geeft. Je kan dit doen door of de borden met de losse USB kabel te voeden (verbind wel altijd de GND door), of door VCC op de 5V van de Pico aan te sluiten.
 
