@@ -15,13 +15,7 @@
 #define PIN_DI    16
 #define PIN_EN    17
 
-void setup() {
-  pinMode(PIN_CLA, OUTPUT);
-  pinMode(PIN_CLK, OUTPUT);
-  pinMode(PIN_DI, OUTPUT);
-  pinMode(PIN_EN, OUTPUT);
-}
-
+/** HELPER FUNCTIONS **/
 uint8_t mapXY(int8_t x, int8_t y) {
   uint8_t px = (y*16+x);
 
@@ -43,7 +37,7 @@ uint8_t mapXY(int8_t x, int8_t y) {
 }
 
 // https://www.tme.eu/Document/8876e3da3e0cc25d8b4c7cdeea8b8a88/SCT2024.pdf
-void shiftPixels(uint8_t* buffer, size_t count) {
+void shiftPixels(uint8_t* buffer) {
   digitalWrite(PIN_CLA, LOW);
   delayMicroseconds(1);
   for (uint_fast8_t i = 0; i < 16; i++) {
@@ -60,9 +54,15 @@ void shiftPixels(uint8_t* buffer, size_t count) {
   digitalWrite(PIN_CLA, HIGH);
   delayMicroseconds(1);
   digitalWrite(PIN_CLA, LOW);
-  delayMicroseconds(1);
-  digitalWrite(PIN_EN, HIGH);
-  delayMicroseconds(1);
+}
+
+void setup() {
+  pinMode(PIN_CLA, OUTPUT);
+  pinMode(PIN_CLK, OUTPUT);
+  pinMode(PIN_DI, OUTPUT);
+  pinMode(PIN_EN, OUTPUT);
+
+  // Pulling EN low enables display output
   digitalWrite(PIN_EN, LOW);
 }
 
@@ -74,6 +74,6 @@ void loop() {
       buffer[mapXY(x,y)] = x%2;
     }
   }
-  shiftPixels(buffer, PX);
+  shiftPixels(buffer);
   delay(1000);
 }

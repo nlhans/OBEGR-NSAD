@@ -1,7 +1,5 @@
 #include <Arduino.h>
 
-#define Nop8() asm volatile("nop\n" "nop\n" "nop\n" "nop\n" "nop\n" "nop\n" "nop\n" "nop\n" );
-
 /*
  * Pinout:
 *  Cable (Colour) |  Net  | Pico Connection
@@ -18,11 +16,16 @@
 #define PIN_EN    17
 
 #define PX 16*16
+
+// We add 1 px to buffer so we have a location for dummy writes
+// (we perform a dummy write when pixel is off the display)
 uint8_t buffer1[PX+1];
 uint8_t buffer2[PX+1];
 
-uint8_t mapXY(int8_t x, int8_t y) {
+/** HELPER FUNCTIONS **/
+uint32_t mapXY(int8_t x, int8_t y) {
   if (x < 0 || y < 0 || x > 15 || y > 15) return 256;
+
   // Wrap:
   // if (x < 0) x = 15;
   // if (y < 0) y = 15;
@@ -56,38 +59,27 @@ uint8_t mapXY(int8_t x, int8_t y) {
   if (boardPx >= 48 && boardPx < 56)  return board*64 + 63 - boardPx8;
   if (boardPx >= 56 && boardPx < 64)  return board*64 + 47 - boardPx8;
   
-  return 0; //board*64;
-  // return panel_index(x,y)*16 + inpanel_index(x,y);
+  return 0;
 }
 
-uint_fast8_t countNeighbors(uint8_t* px, uint_fast8_t x, uint_fast8_t y) {
-  uint_fast8_t neighbor = 
-    px[mapXY(x-1, y-1)] + 
-    px[mapXY(x-1, y)] + 
-    px[mapXY(x-1, y+1)] + 
-    
-    px[mapXY(x, y-1)] + 
-    px[mapXY(x, y+1)] + 
-
-    px[mapXY(x+1, y-1)] + 
-    px[mapXY(x+1, y)] + 
-    px[mapXY(x+1, y+1)];
-  return neighbor;
-}
-
-void update(uint8_t* from, uint8_t* to) {
-  for (uint_fast8_t x = 0; x < 16; x++) {
-    for (uint_fast8_t y = 0; y < 16; y++) {
-      uint_fast8_t neighbors = countNeighbors(from, x, y);
-      uint_fast8_t aliveOld = from[mapXY(x,y)];
-      uint_fast8_t aliveNew = 0;
-      if (aliveOld && neighbors < 2) aliveNew = 0;
-      else if (aliveOld && (neighbors == 2 || neighbors == 3)) aliveNew = aliveOld;
-      else if (aliveOld && (neighbors > 3)) aliveNew = 0;
-      else if (!aliveOld && (neighbors == 3)) aliveNew = 1;
-      to[mapXY(x,y)] = aliveNew;
+// https://www.tme.eu/Document/8876e3da3e0cc25d8b4c7cdeea8b8a88/SCT2024.pdf
+void shiftPixels(uint8_t* buffer) {
+  digitalWrite(PIN_CLA, LOW);
+  delayMicroseconds(1);
+  for (uint_fast8_t i = 0; i < 16; i++) {
+    for (uint_fast8_t j = 0; j < 16; j++) {
+      digitalWrite(PIN_DI, buffer[i*16+j]>0?HIGH:LOW);
+      delayMicroseconds(1);
+      digitalWrite(PIN_CLK, HIGH);
+      delayMicroseconds(1);
+      digitalWrite(PIN_CLK, LOW);
+      delayMicroseconds(1);
     }
+    delayMicroseconds(1);
   }
+  digitalWrite(PIN_CLA, HIGH);
+  delayMicroseconds(1);
+  digitalWrite(PIN_CLA, LOW);
 }
 
 void setup() {
@@ -98,6 +90,9 @@ void setup() {
 
   memset(buffer1, 0, sizeof(buffer1));
   memset(buffer2, 0, sizeof(buffer2));
+
+  // Pulling EN low enables display output
+  digitalWrite(PIN_EN, LOW);
 
   uint8_t x = 3;
   buffer1[mapXY(0,x+4)] = 1;
@@ -131,54 +126,43 @@ void setup() {
   buffer1[mapXY(15,x+4)] = 1;
 }
 
-// https://www.tme.eu/Document/8876e3da3e0cc25d8b4c7cdeea8b8a88/SCT2024.pdf
-void shiftPixels(uint8_t* buffer, size_t count) {
-  size_t b = 0;
-  digitalWrite(PIN_CLA, LOW);
-  delayMicroseconds(1);
-  for (uint_fast8_t i = 0; i < 16; i++) {
-    for (uint_fast8_t j = 0; j < 16; j++) {
-      digitalWrite(PIN_DI, buffer[i*16+j]>0?HIGH:LOW);
-      delayMicroseconds(1);
-      digitalWrite(PIN_CLK, HIGH);
-      delayMicroseconds(1);
-      digitalWrite(PIN_CLK, LOW);
-      delayMicroseconds(1);
+/** GAME OF LIFE **/
+uint_fast8_t countNeighbors(uint8_t* px, uint_fast8_t x, uint_fast8_t y) {
+  uint_fast8_t neighbor = 
+    px[mapXY(x-1, y-1)] + 
+    px[mapXY(x-1, y)] + 
+    px[mapXY(x-1, y+1)] + 
+    
+    px[mapXY(x, y-1)] + 
+    px[mapXY(x, y+1)] + 
 
-      // b += 1;
-    }
-    delayMicroseconds(1);
-  }
-  digitalWrite(PIN_CLA, HIGH);
-  delayMicroseconds(1);
-  digitalWrite(PIN_CLA, LOW);
-  delayMicroseconds(1);
-  digitalWrite(PIN_EN, HIGH); // Blank display during update
-  delayMicroseconds(1);
-  digitalWrite(PIN_EN, LOW); // Show display bits again
+    px[mapXY(x+1, y-1)] + 
+    px[mapXY(x+1, y)] + 
+    px[mapXY(x+1, y+1)];
+  return neighbor;
 }
-uint8_t cnt = 0;
+
+void update(uint8_t* from, uint8_t* to) {
+  for (uint_fast8_t x = 0; x < 16; x++) {
+    for (uint_fast8_t y = 0; y < 16; y++) {
+      uint_fast8_t neighbors = countNeighbors(from, x, y);
+      uint_fast8_t aliveOld = from[mapXY(x,y)];
+      uint_fast8_t aliveNew = 0;
+      if (aliveOld && neighbors < 2) aliveNew = 0;
+      else if (aliveOld && (neighbors == 2 || neighbors == 3)) aliveNew = aliveOld;
+      else if (aliveOld && (neighbors > 3)) aliveNew = 0;
+      else if (!aliveOld && (neighbors == 3)) aliveNew = 1;
+      to[mapXY(x,y)] = aliveNew;
+    }
+  }
+}
+
 void loop() {
   update(buffer1, buffer2);
-  shiftPixels(buffer2, PX);
+  shiftPixels(buffer2);
   delay(500);
 
   update(buffer2, buffer1);
-  shiftPixels(buffer1, PX);
+  shiftPixels(buffer1);
   delay(500);
-
-  
-
-  // uint8_t framebuffer[PX];
-  // memset(framebuffer, 0, PX);
-
-  // for (uint8_t x = 0; x < 16; x++) {
-  //   for (uint8_t y = 0; y < 16; y++) {
-  //     uint8_t px = mapXY(x,y);
-  //     framebuffer[px] = (y*16+x) % 2;
-  //   }
-  // }
-  // shiftPixels(framebuffer, PX);
-
-
 }
