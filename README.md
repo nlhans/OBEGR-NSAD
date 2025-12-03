@@ -6,7 +6,8 @@ Dit document beschrijft hoe je de IKEA OBEGRÄNSAD kan modden om met een Raspber
 
 ## Wat zit er in?
 Als je de IKEA OBEGRÄNSAD openmaakt, dan zal je zien dat er 4 losse borden zitten die met elkaar zijn doorverbonden:
-![[img/Pasted image 20251201153451.png]]
+
+![Internals](https://github.com/nlhans/OBEGR-NSAD/blob/main/img/Pasted%20image%2020251201153451.png?raw=true)
 
 Zoals je ziet zitten er op elke borden 4 chips met de benaming "SCT2024". Dit zijn de LED driver chips die we straks moeten aansturen. Op het onderste bord (#1) zit ook nog een losse extra chip: dit is een kleine (onbekende) microcontroller die IKEA heeft geprogrammeerd om wat standaard patronen te laten zien. Tenslotte zit er op bord 1 ook een aansluiting voor de USB voedingskabel. Men heeft daar nog een klikschakelaar gezet zodat je de voedingslijn aan of af kan schakelen.
 ## Borden aanpassen
@@ -15,7 +16,8 @@ De borden bevatten standaard al een microcontroller die de LED matrixen aansture
 De andere optie is om de chip te verwijderen en vervolgens met externe bedrading de matrix borden aansturen. Hieronder zie je hoe we dat kunnen doen. We moeten 6 draden aansluiten. op de pads op bord 1 (let op dat deze gemarkeerd zijn als "IN"). Vervolgens moeten we de microcontroller op het bord desolderen.
 Het desolderen gaat het makkelijkst met een zogenaamd *hot air rework station*. Dit is (de)solderen met behulp van een hete luchtstroom. Het voordeel van deze techniek is dat je gelijkmatig alle solderingen warm kan maken, waardoor je de chip zonder schade aan de print kan verwijderen.
 
-![[img/Pasted image 20251201153841.png]]
+![Chips met verbinding van signalen](https://github.com/nlhans/OBEGR-NSAD/blob/main/img/Pasted%20image%20251201153841.png?raw=true)
+
 ## Signalen uitzoeken van LED matrix & aansluiten op de Pico
 Zoals gezegd gebruiken deze borden de STC2024 LED driver chip. De solderingen op de vorige foto zijn ook directe verbindingen naar de eerste driver chip. Maar wat doet deze chip eigenlijk, en hoe werkt die?
 
@@ -29,11 +31,14 @@ De volledige benaming luid: "16-bit Serial-In/Parallel-Out Constant-Current LED 
 - Constant-Current LED Driver: Dit is de meest stabiele manier om een LED aan te sturen. LEDs zijn namelijk stroomgestuurde onderdelen, dus om een LED feller te laten branden moet je de stroom verhogen. De spanning over de LED blijft echter nagenoeg gelijk, dus dat is niet een hele betrouwbare manier om ze aan te sturen. Deze driver chip is zo ontworpen dat die de stroom per kanaal regelt en minder afhankelijk is van de voedingspanning.
 
 En deze onderdelen kunnen we ook zien intern:
-![[img/STC2024Device.drawio.png]]
+
+![STC2024 Chip Werking](https://github.com/nlhans/OBEGR-NSAD/blob/main/img/STC2024Device.drawio.png?raw=true)
+
 Wat een leuke truuk van deze drivers is dat je ze achter elkaar kan schakelen. Zoals je ziet hebben we 4 signalen links als ingangen, maar is er ook 1 uitgang signaal. De chip werkt als een schuifregister: elke keer als er een puls op CLK wordt gegeven, schuift alle data door de chip heen. Die data komt vanaf pin SDI en komt er weer uit op SDO. Dit signaal kunnen we dus doorlussen om meerdere drivers (en borden!) achter elkaar te zetten. In dit geval hebben we 4 drivers per bord en 4 borden.. 16x4x4 = 256 LEDs. Dat is toevallig evenveel als de 16x16 matrix die we hebben :-)
 
 De signalen zien er dan zo uit:
-![[img/STC2024Chain.drawio.png]]
+![LED chain](https://github.com/nlhans/OBEGR-NSAD/blob/main/img/STC2024Chain.drawio.png?raw=true)
+
 ## Signalen aansluiten
 De signalen die we op de Pico dus moeten aansluiten zijn:
 - VCC
@@ -129,7 +134,7 @@ Als we dit naar het scherm krijgen zal je zien dat we een raster krijgen van dia
 
 Dat komt op de manier hoe de pixels op het bord zijn geplaatst. We hebben namelijk nog nergens gesproken over hoe 256 LEDs achter elkaar vertalen naar een 16x16 grid. Hier gaf ik eigenlijk al een beetje een voorproefje met deze tekening:
 
-![[img/STC2024Chain.drawio.png]]
+![LED chain](https://github.com/nlhans/OBEGR-NSAD/blob/main/img/STC2024Chain.drawio.png?raw=true)
 
 Alle drivers zijn namelijk tegen de klok in aan elkaar gelust. Vervolgens zijn de 16 LEDs ook in 2 groepjes van 8 op deze manier aan elkaar gelust. Als we dit willen vertalen naar een nette scherm van 16x16, dan moeten we dus rekening houden waar elke pixel op ons scherm fysiek zit, en op welke plek die zit in de schuifregister chain!
 
