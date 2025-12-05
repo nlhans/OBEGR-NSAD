@@ -22,12 +22,27 @@ class OBERGRANSAD : public Adafruit_GFX {
 protected:
   static const uint32_t PX = 16 * 16;
 
-  static const uint8_t bits = 6;
+  static const uint8_t bits = 7;
   static const uint32_t bits_pow2 = 1<<bits;
 
   // The last buffer position is for dummy writes when a pixel is out of bounds.
   volatile uint16_t bufferA[PX+1];
   volatile uint32_t bufferB[PX+1];
+
+  std::array<uint16_t, 256> gamma; // 8-bit grayscale to the colorspace of display
+
+  constexpr std::array<uint16_t, 256> getGammaArray()
+  {
+      std::array<uint16_t, 256> arr{0};
+      for (int i=0; i < 256; ++i) {
+        if (i == 0) {
+          arr[i] = 0;
+        } else {
+          arr[i] = 1 + (bits_pow2 - 1) * powf(i * 1.0f / 256, 2.7f);
+        }
+      }
+      return arr;
+  }
 
   uint8_t mapXY(int16_t x, int16_t y) {
     if (x<0 || y<0 || x>15 || y>15) return PX;
@@ -48,13 +63,15 @@ protected:
     if (boardPx >= 48 && boardPx < 56)  return board*64 + 63 - boardPx8;
     if (boardPx >= 56 && boardPx < 64)  return board*64 + 47 - boardPx8;
 
-    return 0;
+    return PX;
   }
 
   volatile bool blank = true;
 public:
   virtual void drawPixel(int16_t x, int16_t y, uint16_t color) override {
-    bufferA[mapXY(x,y)] = color;
+    if (color > 255) color = 255;
+
+    bufferA[mapXY(x,y)] = gamma[color];
   }
 
   // https://www.tme.eu/Document/8876e3da3e0cc25d8b4c7cdeea8b8a88/SCT2024.pdf
@@ -70,11 +87,11 @@ public:
     for (uint32_t i = 0; i < 256; i++) {
       gpio_put(Pin_DI, *px>cycle);
       px++;
+      asm volatile("nop\nnop\nnop\nnop\nnop");
       gpio_put(Pin_CLK, 1);
       asm volatile("nop\nnop\nnop\nnop\nnop");
-      asm volatile("nop\nnop\nnop\nnop\nnop");
       gpio_put(Pin_CLK, 0);
-      asm volatile("nop\nnop\nnop\nnop\nnop");
+      asm volatile("nop\nnop\nnop");
     }
     delayMicroseconds(1);
     gpio_put(Pin_CLA, HIGH);
@@ -94,7 +111,7 @@ public:
     blank = false;
   }
 
-  OBERGRANSAD() : Adafruit_GFX(16,16) {
+  OBERGRANSAD() : Adafruit_GFX(16,16), gamma{getGammaArray()} {
     // Setup GPIOs
     pinMode(Pin_CLK, OUTPUT);
     pinMode(Pin_DI, OUTPUT);
@@ -125,15 +142,13 @@ void setup() {
   multicore_launch_core1(core1_main);
 }
 
-int16_t scrollX = 0;
 void loop() {
   myFirstLEDMatrix.fillScreen(0);
   
   for(uint32_t i = 0; i < 256; i++) {
-    myFirstLEDMatrix.drawPixel(i/16, i%16, i % 128);
+    myFirstLEDMatrix.drawPixel(i/16, i%16, i);
   }
   myFirstLEDMatrix.show();
-  scrollX ++;
 
   uint32_t e = millis() + 500;
   while (e > millis());
