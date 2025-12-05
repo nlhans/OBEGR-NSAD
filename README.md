@@ -2,7 +2,8 @@ Foto's bron: https://github.com/reschman/ikea-matrix-led-hack?tab=readme-ov-file
 
 Dit document beschrijft hoe je de IKEA OBEGRÄNSAD kan modden om met een Raspberry Pi Pico te laten werken. De IKEA OBEGRÄNSAD is een 16x16 LED matrix met witte LEDs die je aan en uit kan zetten. Als we deze modden kunnen we hier zelf leuke animaties op laten zien.
 
-![Weergave met 256 grijswaarden](https://github.com/nlhans/OBEGR-NSAD/blob/main/img/20151203_150000.jpg?raw=true)
+![Display](https://github.com/nlhans/OBEGR-NSAD/blob/main/img/20251205_142127.jpg?raw=true)
+(Weergave met 128 grijswaarden en gamma correctie)
 
 ## Wat zit er in?
 Als je de IKEA OBEGRÄNSAD openmaakt, dan zal je zien dat er 4 losse borden zitten die met elkaar zijn doorverbonden:
@@ -16,7 +17,7 @@ De borden bevatten standaard al een microcontroller die de LED matrixen aansture
 De andere optie is om de chip te verwijderen en vervolgens met externe bedrading de matrix borden aansturen. Hieronder zie je hoe we dat kunnen doen. We moeten 6 draden aansluiten. op de pads op bord 1 (let op dat deze gemarkeerd zijn als "IN"). Vervolgens moeten we de microcontroller op het bord desolderen.
 Het desolderen gaat het makkelijkst met een zogenaamd *hot air rework station*. Dit is (de)solderen met behulp van een hete luchtstroom. Het voordeel van deze techniek is dat je gelijkmatig alle solderingen warm kan maken, waardoor je de chip zonder schade aan de print kan verwijderen.
 
-![Chips met verbinding van signalen](https://github.com/nlhans/OBEGR-NSAD/blob/main/img/Pasted%20image%20251201153841.png?raw=true)
+![Chips met verbinding van signalen](https://github.com/nlhans/OBEGR-NSAD/blob/main/img/Pasted%20image%2020251201153841.png?raw=true)
 
 ## Signalen uitzoeken van LED matrix & aansluiten op de Pico
 Zoals gezegd gebruiken deze borden de STC2024 LED driver chip. De solderingen op de vorige foto zijn ook directe verbindingen naar de eerste driver chip. Maar wat doet deze chip eigenlijk, en hoe werkt die?
@@ -49,7 +50,7 @@ De signalen die we op de Pico dus moeten aansluiten zijn:
 - EN (Groen)
 
 De bedrading is dan als volgt aangesloten op de RP2040:
-![LED chain](https://github.com/nlhans/OBEGR-NSAD/blob/main/img/20251203_150131.jpg?raw=true)
+![LED chain](https://github.com/nlhans/OBEGR-NSAD/blob/main/img/20251205_122626.jpg?raw=true)
 
 **LET OP! De VCC op deze matrix borden zijn 5V. De Raspberry Pico werkt enkel op 3.3V.**  We kunnen wel digitale signalen naar de borden sturen, en meestal zal een 5V apparaat wel 3.3V signalen begrijpen. Echter let goed op hoe je de borden voedingspanning geeft. Je kan dit doen door of de borden met de losse USB kabel te voeden (verbind wel altijd de GND door), of door VCC op de 5V van de Pico aan te sluiten.
 
@@ -60,16 +61,16 @@ Deze namen staan voor:
 - EN: Hiermee kunnen we alle LEDs tegelijk aan en uit zetten. In de datasheet heet dit signaal "OE/"
 
 In mijn geval heb ik ze aangesloten op de Pico bij:
-- CLA: GPIO 15
-- CLK: GPIO 14
-- DI: GPIO 16
-- EN: GPIO 17
+- CLA: GPIO 1
+- CLK: GPIO 2
+- DI: GPIO 3
+- EN: GPIO 0
 Op de Pico kunnen we deze GPIOs zo opstarten:
 ```
-#define PIN_CLA   15
-#define PIN_CLK   14
-#define PIN_DI    16
-#define PIN_EN    17
+#define PIN_CLA   1
+#define PIN_CLK   2
+#define PIN_DI    3
+#define PIN_EN    0
 
 void setup() {
   pinMode(PIN_CLA, OUTPUT);
