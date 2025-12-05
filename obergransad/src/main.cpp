@@ -10,19 +10,19 @@ void core1_main() RAMFUNC;
 /*
  * Pinout:
 *  Cable (Colour) |  Net  | Pico Connection
- * Pin 1 (Bruin)  |  VCC  |      N/C  
- * Pin 2 (Rood)   |  CLA  | Pin 20 (GP15)
- * Pin 3 (Oranje) |  CLK  | Pin 19 (GP14)
- * Pin 4 (Geel)   |   DI  | Pin 21 (GP16)
- * Pin 5 (Groen)  |   EN  | Pin 22 (GP17)
- * Pin 6 (Blauw)  |  GND  |  Pin 23 (GND)
+uin)  |  VCC  |      N/C  
+ * Pin 2 (Rood)   |  CLA  | Pin 2 (GP1)
+ * Pin 3 (Oranje) |  CLK  | Pin 4 (GP2)
+ * Pin 4 (Geel)   |   DI  | Pin 5 (GP3)
+ * Pin 5 (Groen)  |   EN  | Pin 1 (GP0)
+ * Pin 6 (Blauw)  |  GND  | Pin 3 (GND)
 */
 template<int Pin_CLK, int Pin_DI, int Pin_CLA, int Pin_EN>
 class OBERGRANSAD : public Adafruit_GFX {
 protected:
   static const uint32_t PX = 16 * 16;
 
-  static const uint8_t bits = 8;
+  static const uint8_t bits = 6;
   static const uint32_t bits_pow2 = 1<<bits;
 
   // The last buffer position is for dummy writes when a pixel is out of bounds.
@@ -72,7 +72,9 @@ public:
       px++;
       gpio_put(Pin_CLK, 1);
       asm volatile("nop\nnop\nnop\nnop\nnop");
+      asm volatile("nop\nnop\nnop\nnop\nnop");
       gpio_put(Pin_CLK, 0);
+      asm volatile("nop\nnop\nnop\nnop\nnop");
     }
     delayMicroseconds(1);
     gpio_put(Pin_CLA, HIGH);
@@ -112,9 +114,9 @@ public:
     gpio_put(Pin_EN, LOW);
   }
 };
-using MyDisplay = OBERGRANSAD<14, 16, 15, 17>;
+using MyDisplay = OBERGRANSAD<2, 3, 1, 0>; // Pins: CLK, DI, CLA, EN
 
-MyDisplay myFirstLEDMatrix{}; // Pins: CLK, DI, CLA, EN
+MyDisplay myFirstLEDMatrix{}; 
 
 void setup() {
   Serial.begin(115200);
@@ -128,12 +130,12 @@ void loop() {
   myFirstLEDMatrix.fillScreen(0);
   
   for(uint32_t i = 0; i < 256; i++) {
-    myFirstLEDMatrix.drawPixel(i/16, i%16, i);
+    myFirstLEDMatrix.drawPixel(i/16, i%16, i % 128);
   }
   myFirstLEDMatrix.show();
   scrollX ++;
 
-  uint32_t e = millis() + 100;
+  uint32_t e = millis() + 500;
   while (e > millis());
 }
 
