@@ -4,16 +4,16 @@
  * Pinout:
 *  Cable (Colour) |  Net  | Pico Connection
  * Pin 1 (Bruin)  |  VCC  |      N/C  
- * Pin 2 (Rood)   |  CLA  | Pin 20 (GP15)
- * Pin 3 (Oranje) |  CLK  | Pin 19 (GP14)
- * Pin 4 (Geel)   |   DI  | Pin 21 (GP16)
- * Pin 5 (Groen)  |   EN  | Pin 22 (GP17)
- * Pin 6 (Blauw)  |  GND  |  Pin 23 (GND)
+ * Pin 2 (Rood)   |  CLA  | Pin 2 (GP1)
+ * Pin 3 (Oranje) |  CLK  | Pin 4 (GP2)
+ * Pin 4 (Geel)   |   DI  | Pin 5 (GP3)
+ * Pin 5 (Groen)  |   EN  | Pin 1 (GP0)
+ * Pin 6 (Blauw)  |  GND  | Pin 3 (GND)
 */
-#define PIN_CLA   15
-#define PIN_CLK   14
-#define PIN_DI    16
-#define PIN_EN    17
+#define PIN_CLA   1
+#define PIN_CLK   2
+#define PIN_DI    3
+#define PIN_EN    0
 
 #define PX 16*16
 
@@ -87,6 +87,9 @@ void setup() {
   pinMode(PIN_CLK, OUTPUT);
   pinMode(PIN_DI, OUTPUT);
   pinMode(PIN_EN, OUTPUT);
+
+  gpio_set_drive_strength(PIN_CLK, GPIO_DRIVE_STRENGTH_12MA);
+  gpio_set_drive_strength(PIN_DI, GPIO_DRIVE_STRENGTH_12MA);
 
   memset(buffer1, 0, sizeof(buffer1));
   memset(buffer2, 0, sizeof(buffer2));
