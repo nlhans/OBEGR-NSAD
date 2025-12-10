@@ -2,6 +2,43 @@
 #include <Adafruit_GFX.h>
 #include <U8g2_for_Adafruit_GFX.h>
 
+extern uint8_t frame_0[256];
+extern uint8_t frame_1[256];
+extern uint8_t frame_2[256];
+extern uint8_t frame_3[256];
+extern uint8_t frame_4[256];
+extern uint8_t frame_5[256];
+extern uint8_t frame_6[256];
+extern uint8_t frame_7[256];
+extern uint8_t frame_8[256];
+extern uint8_t frame_9[256];
+extern uint8_t frame_10[256];
+extern uint8_t frame_11[256];
+
+const uint8_t* frames[] = {
+  frame_0,
+  frame_1,
+  frame_2,
+  frame_3,
+  frame_4,
+  frame_5,
+  frame_6,
+  frame_7,
+  frame_8,
+  frame_9,
+  frame_10,
+  frame_11,
+ };
+
+
+
+
+
+
+
+
+
+
 /*
  * Pinout:
 *  Cable (Colour) |  Net  | Pico Connection
@@ -17,7 +54,7 @@ class OBERGRANSAD : public Adafruit_GFX {
 protected:
   static const uint32_t PX = 16 * 16;
 
-  static const uint8_t bits = 7;
+  static const uint8_t bits = 6;
   static const uint32_t bits_pow2 = 1<<bits;
 
   // The last buffer position is for dummy writes when a pixel is out of bounds.
@@ -157,15 +194,20 @@ void setup() {
   irq_set_enabled(PWM_IRQ_WRAP, true);
 }
 
-uint32_t tick = 0;
+uint32_t frameCounter = 0;
 void loop() {
   myFirstLEDMatrix.fillScreen(0);
   
-  for(uint32_t i = 0; i < 256; i++) {
-    myFirstLEDMatrix.drawPixel(i/16, i%16, (i+tick) & 0xFF);
+  for (int x = 0; x < 16; x++) {
+    for (int y = 0; y < 16; y++) {
+      myFirstLEDMatrix.writePixel(15-y,x, frames[frameCounter][x+y*16]);
+    }
   }
   myFirstLEDMatrix.show();
-  tick++;
+  frameCounter++;
+  if(frameCounter==12) {
+    frameCounter=0;
+  }
 
-  delay(10);
+  delay(100);
 }

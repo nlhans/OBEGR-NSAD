@@ -1,0 +1,1 @@
+convert furby.gif -coalesce frames/frame.bmp
