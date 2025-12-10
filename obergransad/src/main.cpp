@@ -1,16 +1,11 @@
 #include <Arduino.h>
 #include <Adafruit_GFX.h>
 #include <U8g2_for_Adafruit_GFX.h>
-#include "pico/time.h"
-#include <multicore.h>
-
-#define RAMFUNC __attribute__((optimize("-O3"), section(".ramfunc"), noinline))
-void core1_main() RAMFUNC;
 
 /*
  * Pinout:
 *  Cable (Colour) |  Net  | Pico Connection
-uin)  |  VCC  |      N/C  
+ * Pin 1 (Bruin)  |  VCC  |      N/C  
  * Pin 2 (Rood)   |  CLA  | Pin 2 (GP1)
  * Pin 3 (Oranje) |  CLK  | Pin 4 (GP2)
  * Pin 4 (Geel)   |   DI  | Pin 5 (GP3)
@@ -75,14 +70,13 @@ public:
   }
 
   // https://www.tme.eu/Document/8876e3da3e0cc25d8b4c7cdeea8b8a88/SCT2024.pdf
-  void display() RAMFUNC {
+  void display() __attribute__((optimize("-O3"))) {
     if (blank) return;
     
     static uint32_t cycle = 0;
     cycle++;
     if (cycle >= bits_pow2) cycle = 0;
 
-    // delayMicroseconds(1);
     auto px = bufferB;
     for (uint32_t i = 0; i < 256; i++) {
       gpio_put(Pin_DI, *px>cycle);
@@ -99,15 +93,19 @@ public:
     gpio_put(Pin_CLA, LOW);
   }
 
+  uint32_t getDepth() const {
+    return bits_pow2;
+  }
+
+  uint32_t getBitDepth() const {
+    return bits;
+  }
+
   void show() {
-    gpio_put(Pin_EN, HIGH);
     blank = true;
     for (size_t i = 0; i < sizeof(bufferA)/sizeof(bufferA[0]); i++) {
       bufferB[i] = bufferA[i];
     }
-    // uint32_t c = cycle;
-    // while(cycle == c);
-    gpio_put(Pin_EN, LOW);
     blank = false;
   }
 
@@ -133,29 +131,41 @@ public:
 };
 using MyDisplay = OBERGRANSAD<2, 3, 1, 0>; // Pins: CLK, DI, CLA, EN
 
-MyDisplay myFirstLEDMatrix{}; 
+MyDisplay myFirstLEDMatrix{};
+U8G2_FOR_ADAFRUIT_GFX u8g2_for_adafruit_gfx;
 
 void setup() {
   Serial.begin(115200);
-  
-  multicore_reset_core1();
-  multicore_launch_core1(core1_main);
+  u8g2_for_adafruit_gfx.begin(myFirstLEDMatrix);
+
+  // Display updater at 8kHz
+  // 2**7 (7-bits grayscale) x 60Hz = 7680Hz.
+  gpio_set_function(4, GPIO_FUNC_PWM); // Debug
+  uint32_t _slice_num = pwm_gpio_to_slice_num(4);
+  uint32_t f_sys = 125000000;
+  pwm_set_clkdiv(_slice_num, 2); 
+  pwm_set_wrap(_slice_num, f_sys / 60 / myFirstLEDMatrix.getDepth() / 2 - 1);
+  pwm_set_chan_level(_slice_num, PWM_CHAN_A, 50); 
+  pwm_set_enabled(_slice_num, true); // let's go!
+
+  // set up interrupts
+  pwm_set_irq_enabled(_slice_num, true);
+  irq_add_shared_handler(PWM_IRQ_WRAP, (irq_handler_t) []() -> void{
+    myFirstLEDMatrix.display();
+    pwm_clear_irq( pwm_gpio_to_slice_num(4));
+  }, PICO_SHARED_IRQ_HANDLER_DEFAULT_ORDER_PRIORITY);
+  irq_set_enabled(PWM_IRQ_WRAP, true);
 }
 
+uint32_t tick = 0;
 void loop() {
   myFirstLEDMatrix.fillScreen(0);
   
   for(uint32_t i = 0; i < 256; i++) {
-    myFirstLEDMatrix.drawPixel(i/16, i%16, i);
+    myFirstLEDMatrix.drawPixel(i/16, i%16, (i+tick) & 0xFF);
   }
   myFirstLEDMatrix.show();
+  tick++;
 
-  uint32_t e = millis() + 500;
-  while (e > millis());
-}
-
-void core1_main() {
-  while(1) {
-    myFirstLEDMatrix.display(); //51-52us per update
-  }
+  delay(10);
 }

@@ -1,10 +1,6 @@
 #include <Arduino.h>
 #include <Adafruit_GFX.h>
-#include <multicore.h>
 #include <U8g2_for_Adafruit_GFX.h>
-
-#define RAMFUNC __attribute__((optimize("-O3"), section(".ramfunc"), noinline))
-void core1_main() RAMFUNC;
 
 /*
  * Pinout:
@@ -21,7 +17,7 @@ class OBERGRANSAD : public Adafruit_GFX {
 protected:
   static const uint32_t PX = 16 * 16;
 
-  static const uint8_t bits = 6;
+  static const uint8_t bits = 2;
   static const uint32_t bits_pow2 = 1<<bits;
 
   // The last buffer position is for dummy writes when a pixel is out of bounds.
@@ -70,11 +66,11 @@ public:
   virtual void drawPixel(int16_t x, int16_t y, uint16_t color) override {
     if (color > 255) color = 255;
 
-    bufferA[mapXY(15-x,y)] = gamma[color];
+    bufferA[mapXY(x,y)] = gamma[color];
   }
 
   // https://www.tme.eu/Document/8876e3da3e0cc25d8b4c7cdeea8b8a88/SCT2024.pdf
-  void display() RAMFUNC {
+  void display() __attribute__((optimize("-O3"))) {
     if (blank) return;
     
     static uint32_t cycle = 0;
@@ -97,13 +93,19 @@ public:
     gpio_put(Pin_CLA, LOW);
   }
 
+  uint32_t getDepth() const {
+    return bits_pow2;
+  }
+
+  uint32_t getBitDepth() const {
+    return bits;
+  }
+
   void show() {
-    gpio_put(Pin_EN, HIGH);
     blank = true;
     for (size_t i = 0; i < sizeof(bufferA)/sizeof(bufferA[0]); i++) {
       bufferB[i] = bufferA[i];
     }
-    gpio_put(Pin_EN, LOW);
     blank = false;
   }
 
@@ -129,19 +131,31 @@ public:
 };
 using MyDisplay = OBERGRANSAD<2, 3, 1, 0>; // Pins: CLK, DI, CLA, EN
 
-MyDisplay myFirstLEDMatrix{}; 
+MyDisplay myFirstLEDMatrix{};
 U8G2_FOR_ADAFRUIT_GFX u8g2_for_adafruit_gfx;
+
 void setup() {
-  myFirstLEDMatrix.fillScreen(0);
-  myFirstLEDMatrix.display();
+  Serial.begin(115200);
   u8g2_for_adafruit_gfx.begin(myFirstLEDMatrix);
 
-  Serial.begin(115200);
-  
-  multicore_reset_core1();
-  multicore_launch_core1(core1_main);
-}
+  // Display updater at 8kHz
+  // 2**7 (7-bits grayscale) x 60Hz = 7680Hz.
+  gpio_set_function(4, GPIO_FUNC_PWM); // Debug
+  uint32_t _slice_num = pwm_gpio_to_slice_num(4);
+  uint32_t f_sys = 125000000;
+  pwm_set_clkdiv(_slice_num, 2); 
+  pwm_set_wrap(_slice_num, f_sys / 60 / myFirstLEDMatrix.getDepth() / 2 - 1);
+  pwm_set_chan_level(_slice_num, PWM_CHAN_A, 50); 
+  pwm_set_enabled(_slice_num, true); // let's go!
 
+  // set up interrupts
+  pwm_set_irq_enabled(_slice_num, true);
+  irq_add_shared_handler(PWM_IRQ_WRAP, (irq_handler_t) []() -> void{
+    myFirstLEDMatrix.display();
+    pwm_clear_irq( pwm_gpio_to_slice_num(4));
+  }, PICO_SHARED_IRQ_HANDLER_DEFAULT_ORDER_PRIORITY);
+  irq_set_enabled(PWM_IRQ_WRAP, true);
+}
 
 int16_t scrollX = 0;
 void loop() {
@@ -150,11 +164,11 @@ void loop() {
   u8g2_for_adafruit_gfx.setForegroundColor(255); // on
   u8g2_for_adafruit_gfx.setBackgroundColor(0); // off
   u8g2_for_adafruit_gfx.setFont(u8g2_font_5x7_mf);
-  u8g2_for_adafruit_gfx.setFontDirection(3);
+  u8g2_for_adafruit_gfx.setFontDirection(0);
   u8g2_for_adafruit_gfx.setFontMode(0); // non-transparant 
-  u8g2_for_adafruit_gfx.setCursor(15, scrollX-20);
+  u8g2_for_adafruit_gfx.setCursor(scrollX-20, 15);
   u8g2_for_adafruit_gfx.print("Fablab");
-  u8g2_for_adafruit_gfx.setCursor(7, scrollX);
+  u8g2_for_adafruit_gfx.setCursor(scrollX, 7);
   u8g2_for_adafruit_gfx.print("Oldenzaal");
 
   scrollX ++;
@@ -163,12 +177,5 @@ void loop() {
   }
   myFirstLEDMatrix.show();
   
-  uint32_t e = millis() + 50;
-  while (e > millis());
-}
-
-void core1_main() {
-  while(1) {
-    myFirstLEDMatrix.display(); //51-52us per update
-  }
+  delay(100);
 }

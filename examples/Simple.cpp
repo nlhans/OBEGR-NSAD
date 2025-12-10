@@ -1,4 +1,6 @@
 #include <Arduino.h>
+#include <Adafruit_GFX.h>
+#include <U8g2_for_Adafruit_GFX.h>
 
 /*
  * Pinout:
@@ -10,73 +12,158 @@
  * Pin 5 (Groen)  |   EN  | Pin 1 (GP0)
  * Pin 6 (Blauw)  |  GND  | Pin 3 (GND)
 */
-#define PIN_CLA   1
-#define PIN_CLK   2
-#define PIN_DI    3
-#define PIN_EN    0
+template<int Pin_CLK, int Pin_DI, int Pin_CLA, int Pin_EN>
+class OBERGRANSAD : public Adafruit_GFX {
+protected:
+  static const uint32_t PX = 16 * 16;
 
-/** HELPER FUNCTIONS **/
-uint8_t mapXY(int8_t x, int8_t y) {
-  uint8_t px = (y*16+x);
+  static const uint8_t bits = 7;
+  static const uint32_t bits_pow2 = 1<<bits;
 
-  uint8_t board = (px / 64);
-  uint8_t boardPx = px % 64;
-  uint8_t boardPx8 = px % 8;
+  // The last buffer position is for dummy writes when a pixel is out of bounds.
+  volatile uint16_t bufferA[PX+1];
+  volatile uint32_t bufferB[PX+1];
 
-  if (boardPx >= 0 && boardPx < 8)   return board*64 + 0  + boardPx8;
-  if (boardPx >= 8 && boardPx < 16)  return board*64 + 16 + boardPx8;
-  if (boardPx >= 16 && boardPx < 24)  return board*64 + 15 - boardPx8;
-  if (boardPx >= 24 && boardPx < 32)  return board*64 + 31 - boardPx8;
+  std::array<uint16_t, 256> gamma; // 8-bit grayscale to the colorspace of display
 
-  if (boardPx >= 32 && boardPx < 40)  return board*64 + 48  + boardPx8;
-  if (boardPx >= 40 && boardPx < 48)  return board*64 + 32 + boardPx8;
-  if (boardPx >= 48 && boardPx < 56)  return board*64 + 63 - boardPx8;
-  if (boardPx >= 56 && boardPx < 64)  return board*64 + 47 - boardPx8;
+  constexpr std::array<uint16_t, 256> getGammaArray()
+  {
+      std::array<uint16_t, 256> arr{0};
+      for (int i=0; i < 256; ++i) {
+        if (i == 0) {
+          arr[i] = 0;
+        } else {
+          arr[i] = 1 + (bits_pow2 - 1) * powf(i * 1.0f / 256, 2.7f);
+        }
+      }
+      return arr;
+  }
 
-  return 0;
-}
+  uint8_t mapXY(int16_t x, int16_t y) {
+    if (x<0 || y<0 || x>15 || y>15) return PX;
 
-// https://www.tme.eu/Document/8876e3da3e0cc25d8b4c7cdeea8b8a88/SCT2024.pdf
-void shiftPixels(uint8_t* buffer) {
-  digitalWrite(PIN_CLA, LOW);
-  delayMicroseconds(1);
-  for (uint_fast8_t i = 0; i < 16; i++) {
-    for (uint_fast8_t j = 0; j < 16; j++) {
-      digitalWrite(PIN_DI, buffer[i*16+j]>0?HIGH:LOW);
-      delayMicroseconds(1);
-      digitalWrite(PIN_CLK, HIGH);
-      delayMicroseconds(1);
-      digitalWrite(PIN_CLK, LOW);
-      delayMicroseconds(1);
+    uint8_t px = (y*16+x);
+
+    uint8_t board = (px / 64);
+    uint8_t boardPx = px % 64;
+    uint8_t boardPx8 = px % 8;
+
+    if (boardPx >= 0 && boardPx < 8)   return board*64 + 0  + boardPx8;
+    if (boardPx >= 8 && boardPx < 16)  return board*64 + 16 + boardPx8;
+    if (boardPx >= 16 && boardPx < 24)  return board*64 + 15 - boardPx8;
+    if (boardPx >= 24 && boardPx < 32)  return board*64 + 31 - boardPx8;
+
+    if (boardPx >= 32 && boardPx < 40)  return board*64 + 48  + boardPx8;
+    if (boardPx >= 40 && boardPx < 48)  return board*64 + 32 + boardPx8;
+    if (boardPx >= 48 && boardPx < 56)  return board*64 + 63 - boardPx8;
+    if (boardPx >= 56 && boardPx < 64)  return board*64 + 47 - boardPx8;
+
+    return PX;
+  }
+
+  volatile bool blank = true;
+public:
+  virtual void drawPixel(int16_t x, int16_t y, uint16_t color) override {
+    if (color > 255) color = 255;
+
+    bufferA[mapXY(x,y)] = gamma[color];
+  }
+
+  // https://www.tme.eu/Document/8876e3da3e0cc25d8b4c7cdeea8b8a88/SCT2024.pdf
+  void display() __attribute__((optimize("-O3"))) {
+    if (blank) return;
+    
+    static uint32_t cycle = 0;
+    cycle++;
+    if (cycle >= bits_pow2) cycle = 0;
+
+    auto px = bufferB;
+    for (uint32_t i = 0; i < 256; i++) {
+      gpio_put(Pin_DI, *px>cycle);
+      px++;
+      asm volatile("nop\nnop\nnop\nnop\nnop");
+      gpio_put(Pin_CLK, 1);
+      asm volatile("nop\nnop\nnop\nnop\nnop");
+      gpio_put(Pin_CLK, 0);
+      asm volatile("nop\nnop\nnop");
     }
     delayMicroseconds(1);
+    gpio_put(Pin_CLA, HIGH);
+    delayMicroseconds(1);
+    gpio_put(Pin_CLA, LOW);
   }
-  digitalWrite(PIN_CLA, HIGH);
-  delayMicroseconds(1);
-  digitalWrite(PIN_CLA, LOW);
-}
+
+  uint32_t getDepth() const {
+    return bits_pow2;
+  }
+
+  uint32_t getBitDepth() const {
+    return bits;
+  }
+
+  void show() {
+    blank = true;
+    for (size_t i = 0; i < sizeof(bufferA)/sizeof(bufferA[0]); i++) {
+      bufferB[i] = bufferA[i];
+    }
+    blank = false;
+  }
+
+  OBERGRANSAD() : Adafruit_GFX(16,16), gamma{getGammaArray()} {
+    // Setup GPIOs
+    pinMode(Pin_CLK, OUTPUT);
+    pinMode(Pin_DI, OUTPUT);
+    pinMode(Pin_CLA, OUTPUT);
+    pinMode(Pin_EN, OUTPUT);
+
+    gpio_set_drive_strength(Pin_CLK, GPIO_DRIVE_STRENGTH_12MA);
+    gpio_set_drive_strength(Pin_DI, GPIO_DRIVE_STRENGTH_12MA);
+
+    // Clear pixel buffer
+    for (size_t i = 0; i < sizeof(bufferA)/sizeof(bufferA[0]); i++) {
+      bufferA[i] = 0;
+      bufferB[i] = 0;
+    }
+
+    // Pulling EN low enables display output
+    gpio_put(Pin_EN, LOW);
+  }
+};
+using MyDisplay = OBERGRANSAD<2, 3, 1, 0>; // Pins: CLK, DI, CLA, EN
+
+MyDisplay myFirstLEDMatrix{};
+U8G2_FOR_ADAFRUIT_GFX u8g2_for_adafruit_gfx;
 
 void setup() {
-  pinMode(PIN_CLA, OUTPUT);
-  pinMode(PIN_CLK, OUTPUT);
-  pinMode(PIN_DI, OUTPUT);
-  pinMode(PIN_EN, OUTPUT);
+  Serial.begin(115200);
+  u8g2_for_adafruit_gfx.begin(myFirstLEDMatrix);
 
-  gpio_set_drive_strength(PIN_CLK, GPIO_DRIVE_STRENGTH_12MA);
-  gpio_set_drive_strength(PIN_DI, GPIO_DRIVE_STRENGTH_12MA);
+  // Display updater at 8kHz
+  // 2**7 (7-bits grayscale) x 60Hz = 7680Hz.
+  gpio_set_function(4, GPIO_FUNC_PWM); // Debug
+  uint32_t _slice_num = pwm_gpio_to_slice_num(4);
+  uint32_t f_sys = 125000000;
+  pwm_set_clkdiv(_slice_num, 2); 
+  pwm_set_wrap(_slice_num, f_sys / 60 / myFirstLEDMatrix.getDepth() / 2 - 1);
+  pwm_set_chan_level(_slice_num, PWM_CHAN_A, 50); 
+  pwm_set_enabled(_slice_num, true); // let's go!
 
-  // Pulling EN low enables display output
-  digitalWrite(PIN_EN, LOW);
+  // set up interrupts
+  pwm_set_irq_enabled(_slice_num, true);
+  irq_add_shared_handler(PWM_IRQ_WRAP, (irq_handler_t) []() -> void{
+    myFirstLEDMatrix.display();
+    pwm_clear_irq( pwm_gpio_to_slice_num(4));
+  }, PICO_SHARED_IRQ_HANDLER_DEFAULT_ORDER_PRIORITY);
+  irq_set_enabled(PWM_IRQ_WRAP, true);
 }
 
-#define PX 16*16
 void loop() {
-  uint8_t buffer[PX];
   for (int x = 0; x < 16; x++) {
     for (int y = 0; y < 16; y++) {
-      buffer[mapXY(x,y)] = x%2;
+      myFirstLEDMatrix.writePixel(x,y, (x%2) ? 255 : 0);
     }
   }
-  shiftPixels(buffer);
+  myFirstLEDMatrix.show();
+
   delay(1000);
 }
