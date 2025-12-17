@@ -1,22 +1,25 @@
-from PIL import Image, ImageEnhance
+from PIL import Image, ImageEnhance, ImageChops
 import glob
 import numpy as np
 import os
 
 # HEY THERE! There are some tunables!
-imageName = "furby.gif"
+imageName = "grijshaarigekatachtigen.gif"
 rotation = 90 #DEG
 contrast = 1.0
 brightness = 1.0
 cropArea = (
-    0, # Left (px of original image)
-    0, # Top
+    20, # Left (px of original image)
+    20, # Top
     
-    25, # Right
-    32  # Bottom
+    440, # Right
+    440  # Bottom
 ) 
+# Alpha key
+alphaKey = (39,39,61)
+alphaTolerance = 10
 
-# imageName = "furby.gif"
+# imageName = "grijshaarigekatachtigen.gif"
 # rotation = 90 #DEG
 # contrast = 2.5 # 2.5
 # brightness = 0.5 #0.5
@@ -55,7 +58,15 @@ for frameID in range(frames):
     imgF.save(fr)
     # Crop of area that needs to be retained
     imgF = imgF.crop( cropArea )
-    saveDebugImage(imgF, fr, "1-cropped")
+    saveDebugImage(imgF, fr, "0-cropped")
+
+    imgA = np.array(imgF)
+    for x in range(len(imgA)):
+        for y in range(len(imgA[0])):
+            if abs(int(imgA[x,y][0]) - alphaKey[0]) <= alphaTolerance and abs(int(imgA[x,y][1]) - alphaKey[1]) <= alphaTolerance and abs(int(imgA[x,y][2]) - alphaKey[2]) <= alphaTolerance:
+                imgA[x,y] = 0
+    imgF = Image.fromarray(imgA)
+    saveDebugImage(imgF, fr, "1-alphakeyed")
 
     # Enhance colour space
     imgF_ = ImageEnhance.Brightness(imgF)
@@ -67,17 +78,17 @@ for frameID in range(frames):
     saveDebugImage(imgF, fr, "2-colour")
     
     # Resize to 16x16 (writes in-place)
-    imgF.thumbnail((16, 16))
-    saveDebugImage(imgF, fr, "3-resized")
-    
-    # Resize to 16x16 (writes in-place)
     imgF = imgF.rotate(rotation)
-    saveDebugImage(imgF, fr, "4-rotate")
+    saveDebugImage(imgF, fr, "3-rotate")
 
     # Convert to grayscale
     imgF = imgF.convert('L')
-    saveDebugImage(imgF, fr, "5-grayscale")
-
+    saveDebugImage(imgF, fr, "4-grayscale")
+    
+    # Resize to 16x16 (writes in-place)
+    imgF.thumbnail((16, 16))
+    saveDebugImage(imgF, fr, "5-resized")
+    
     img = np.array(imgF)
 
     # Center image in the most complicated way known to human kind.
