@@ -4,15 +4,16 @@ import numpy as np
 import os
 
 # HEY THERE! There are some tunables!
+imageName = "furby.gif"
 rotation = 90 #DEG
-contrast = 2.5
-brightness = 0.5
+contrast = 1.0 # 2.5
+brightness = 1.0 #0.5
 cropArea = (
-    80, # Left (px of original image)
-    55, # Top
+    0, # Left (px of original image)
+    0, # Top
     
-    424, # Right
-    445  # Bottom
+    25, # Right
+    32  # Bottom
 ) 
 
 # Script :)
@@ -23,13 +24,18 @@ def saveDebugImage(img, fn, step):
                 .replace(".bmp", "-DBG-%s.bmp"%step)
             )
 
-
+imgGIF = Image.open(imageName)
 frameArray = {}
 
 kaas = open("../obergransad/src/frames.c","w")
 kaas.write("#include <stdint.h>\n")
-for fr in glob.glob("frames/*.bmp"):
-    imgF = Image.open(fr)
+frames = imgGIF.n_frames
+
+for frameID in range(frames):
+    fr = "frames/frame-%d.bmp"%frameID
+    imgGIF.seek(frameID)
+    imgF = imgGIF.convert('RGB')
+    imgF.save(fr)
     # Crop of area that needs to be retained
     imgF = imgF.crop( cropArea )
     saveDebugImage(imgF, fr, "1-cropped")
@@ -70,8 +76,8 @@ for fr in glob.glob("frames/*.bmp"):
     if heightSpace > 1:
         heightShift = heightSpace//2
     
-    name = fr.split("frame-")[1].split(".bmp")[0]
-    nameInt = int(name)
+    name = str(frameID)# fr.split("frame-")[1].split(".bmp")[0]
+    nameInt = frameID
 
     s = ""
     for y in range(16):
