@@ -6,8 +6,8 @@ import os
 # HEY THERE! There are some tunables!
 imageName = "furby.gif"
 rotation = 90 #DEG
-contrast = 1.0 # 2.5
-brightness = 1.0 #0.5
+contrast = 1.0
+brightness = 1.0
 cropArea = (
     0, # Left (px of original image)
     0, # Top
@@ -16,6 +16,17 @@ cropArea = (
     32  # Bottom
 ) 
 
+# imageName = "furby.gif"
+# rotation = 90 #DEG
+# contrast = 2.5 # 2.5
+# brightness = 0.5 #0.5
+# cropArea = (
+#     80, # Left (px of original image)
+#     55, # Top
+    
+#     424, # Right
+#     445  # Bottom
+# ) 
 # Script :)
 def saveDebugImage(img, fn, step):
     if os.path.exists("debug/"):
@@ -30,6 +41,12 @@ frameArray = {}
 kaas = open("../obergransad/src/frames.c","w")
 kaas.write("#include <stdint.h>\n")
 frames = imgGIF.n_frames
+
+# Remove old frames/debug output
+for fn in glob.glob("frames/*.bmp"):
+    os.remove(fn)
+for fn in glob.glob("debug/*.bmp"):
+    os.remove(fn)
 
 for frameID in range(frames):
     fr = "frames/frame-%d.bmp"%frameID
@@ -102,3 +119,5 @@ frameCount = len(frameArray.keys())
 kaas.write("\n\nconst intptr_t frames[] = { %s };"%frameArrayC)
 kaas.write("\nconst uint16_t frameCount = %d;"%frameCount)
 kaas.close()
+
+print("Saved %d frames"%frameCount)
