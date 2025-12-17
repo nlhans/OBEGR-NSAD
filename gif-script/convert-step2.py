@@ -7,6 +7,13 @@ import os
 rotation = 90 #DEG
 contrast = 2.5
 brightness = 0.5
+cropArea = (
+    80, # Left (px of original image)
+    55, # Top
+    
+    424, # Right
+    445  # Bottom
+) 
 
 # Script :)
 def saveDebugImage(img, fn, step):
@@ -23,8 +30,8 @@ kaas = open("../obergransad/src/frames.c","w")
 kaas.write("#include <stdint.h>\n")
 for fr in glob.glob("frames/*.bmp"):
     imgF = Image.open(fr)
-    # Crop takes Left, Top,  Right, Bottom of area that needs to be retained
-    imgF = imgF.crop( (80, 55, 424, 445) )
+    # Crop of area that needs to be retained
+    imgF = imgF.crop( cropArea )
     saveDebugImage(imgF, fr, "1-cropped")
 
     # Enhance colour space
