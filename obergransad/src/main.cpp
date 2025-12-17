@@ -2,42 +2,9 @@
 #include <Adafruit_GFX.h>
 #include <U8g2_for_Adafruit_GFX.h>
 
-extern uint8_t frame_0[256];
-extern uint8_t frame_1[256];
-extern uint8_t frame_2[256];
-extern uint8_t frame_3[256];
-extern uint8_t frame_4[256];
-extern uint8_t frame_5[256];
-extern uint8_t frame_6[256];
-extern uint8_t frame_7[256];
-extern uint8_t frame_8[256];
-extern uint8_t frame_9[256];
-extern uint8_t frame_10[256];
-extern uint8_t frame_11[256];
-
-const uint8_t* frames[] = {
-  frame_0,
-  frame_1,
-  frame_2,
-  frame_3,
-  frame_4,
-  frame_5,
-  frame_6,
-  frame_7,
-  frame_8,
-  frame_9,
-  frame_10,
-  frame_11,
- };
-
-
-
-
-
-
-
-
-
+extern const intptr_t frames[];
+extern const uint16_t frameCount;
+const float frameRate = 4.0f; // FPS
 
 /*
  * Pinout:
@@ -198,16 +165,22 @@ uint32_t frameCounter = 0;
 void loop() {
   myFirstLEDMatrix.fillScreen(0);
   
+  intptr_t frameStart = frames[frameCounter];
+  const uint8_t* frameData = reinterpret_cast<const uint8_t*>(frameStart);
+
   for (int x = 0; x < 16; x++) {
     for (int y = 0; y < 16; y++) {
-      myFirstLEDMatrix.writePixel(15-y,x, frames[frameCounter][x+y*16]);
+      myFirstLEDMatrix.writePixel(15-y,x, frameData[x+y*16]);
     }
   }
   myFirstLEDMatrix.show();
+
   frameCounter++;
-  if(frameCounter==12) {
-    frameCounter=0;
+  if(frameCounter >= frameCount) {
+    frameCounter = 0;
   }
 
-  delay(100);
+  if (frameRate > 0) {
+    delay(1000 / frameRate);
+  }
 }

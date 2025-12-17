@@ -1,0 +1,1 @@
+convert grijshaarigekatachtigen.gif -coalesce frames/frame.bmp
