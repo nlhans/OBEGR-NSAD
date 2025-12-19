@@ -30,7 +30,7 @@ def saveDebugImage(img, fn, step):
                 .replace(".bmp", "-DBG-%s.bmp"%step)
             )
 
-imgGIF = Image.open("keep/%s"%imageName)
+imgGIF = Image.open("gifs/%s"%imageName)
 frameArray = {}
 
 imageFn = imageName.split(".")[0]
@@ -80,7 +80,7 @@ for frameID in range(frames):
     saveDebugImage(imgF, fr, "4-grayscale")
     
     # Resize to 16x16 (writes in-place)
-    imgF.thumbnail((16, 16))
+    imgF.thumbnail((16, 16), Resampling.NEAREST)
     saveDebugImage(imgF, fr, "5-resized")
     
     img = np.array(imgF)
