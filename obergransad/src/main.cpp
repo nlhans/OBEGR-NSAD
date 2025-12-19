@@ -159,6 +159,9 @@ U8G2_FOR_ADAFRUIT_GFX u8g2_for_adafruit_gfx;
 
 void setup() {
   Serial.begin(115200);
+
+  pinMode(5, INPUT_PULLUP);
+
   u8g2_for_adafruit_gfx.begin(myFirstLEDMatrix);
 
   // Display updater at 8kHz
@@ -187,19 +190,24 @@ uint32_t frameCounter = 0;
 uint32_t lastSwitch = 0;
 uint32_t lastFrame = 0;
 
+bool ButtonStateLast = true;
+uint32_t ButtonStateCooldown = 0;
+bool ButtonTrigger = false;
+
 void loop() {
   const GifDescriptor* gif = gifs[gifCounter];
 
   // Increment GIF every X seconds
   auto displayTime = gif->DisplayTime;
-  if (displayTime > 0 && 
-      millis() - lastSwitch >= displayTime * 1000) {
+  if (ButtonTrigger || (displayTime > 0 && millis() - lastSwitch >= displayTime * 1000)) {
+    ButtonTrigger = false;
     lastSwitch = millis();
+
     gifCounter++;
     frameCounter = 0;
     if (gifCounter >= gifsCount) gifCounter = 0;
     Serial.print("Displaying GIF #");
-    Serial.println(gifCounter);
+    Serial.println(gifCounter+1);
   }
 
   // Copy new frame of GIF to frame buffer
@@ -207,7 +215,7 @@ void loop() {
 
   // Debug output..
   char dbg[1024];
-  snprintf(dbg, sizeof(dbg), "Displaying GIF %lu / %lu at %p ", gifCounter, gifsCount, gif);
+  snprintf(dbg, sizeof(dbg), "Displaying GIF %lu / %lu at %p ", gifCounter+1, gifsCount, gif);
   Serial.print(dbg);
   snprintf(dbg, sizeof(dbg), "with frame %lu of %lu, with framelist at %p", frameCounter, gif->FrameCount, frameList);
   Serial.print(dbg);
@@ -231,6 +239,19 @@ void loop() {
   }
 
   // Delay for certain framerate
+  // while waiting we check for button trigger
   uint32_t nextFrame = micros() + 1000000 / gif->FrameRate;
-  while (micros() < nextFrame);
+  while (micros() < nextFrame) {
+      // Push button GPIO 5 for scrolling through GIFs
+      bool ButtonState = digitalRead(5) ? true : false;
+      if (!ButtonState && ButtonStateLast) {
+        if (millis() > ButtonStateCooldown) {
+          ButtonTrigger = true;
+          ButtonStateCooldown = millis() + 60000;
+        }
+      } else if (ButtonState && !ButtonStateLast) {
+       ButtonStateCooldown = millis() + 200;
+      }
+      ButtonStateLast = ButtonState;
+  }
 }

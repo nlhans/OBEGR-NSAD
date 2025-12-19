@@ -195,7 +195,7 @@ static const intptr_t frames[] = {
 	(intptr_t) (frame_9)
 };
 const GifDescriptor frames_heart = {
-	.DisplayTime = 300.000,
+	.DisplayTime = 60.000,
 	.FrameRate = 2.000,
 	.FrameCount = 10,
 	.FrameList = (intptr_t) &frames
