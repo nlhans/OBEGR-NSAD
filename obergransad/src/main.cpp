@@ -40,7 +40,7 @@ class OBERGRANSAD : public Adafruit_GFX {
 protected:
   static const uint32_t PX = 16 * 16;
 
-  static const uint8_t bits = 6;
+  static const uint8_t bits = 7;
   static const uint32_t bits_pow2 = 1<<bits;
 
   // The last buffer position is for dummy writes when a pixel is out of bounds.
@@ -56,7 +56,7 @@ protected:
         if (i == 0) {
           arr[i] = 0;
         } else {
-          arr[i] = 1 + (bits_pow2 - 1) * powf(i * 1.0f / 256, 2.7f);
+          arr[i] = 1 + (bits_pow2 - 1) * powf(i * 1.0f / 256, 3.3f);
         }
       }
       return arr;
@@ -191,8 +191,10 @@ void loop() {
   const GifDescriptor* gif = gifs[gifCounter];
 
   // Increment GIF every X seconds
-  if (gif->DisplayTime > 0 && 
-      millis() - lastSwitch >= gif->DisplayTime * 1000) {
+  auto displayTime = gif->DisplayTime;
+  displayTime = 3;
+  if (displayTime > 0 && 
+      millis() - lastSwitch >= displayTime * 1000) {
     lastSwitch = millis();
     gifCounter++;
     frameCounter = 0;

@@ -4,18 +4,18 @@ import numpy as np
 import os
 
 # HEY THERE! There are some tunables!
-framerate = 3 # FPS
+framerate = 2 # FPS
 displaytime = 300 # time in seconds to display this gif.., use -1 for permanent display
-imageName = "heart.webp"
+imageName = "catnap.png"
 rotation = 90 #DEG
-contrast = 1.0 #1.0 = 100%
-brightness = 1.0 #1.0 = 100%
+contrast = 1.25 #1.0 = 100%
+brightness = 0.75 #1.0 = 100%
 cropArea = (
     0, # Left (px of original image)
     0, # Top
     
-    200, # Right
-    200  # Bottom
+    150, # Right
+    150  # Bottom
 ) 
 
 # Alpha key (so you can remove filled background colours)
