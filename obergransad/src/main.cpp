@@ -14,8 +14,10 @@ extern const GifDescriptor frames_catjump;
 extern const GifDescriptor frames_catnap;
 extern const GifDescriptor frames_grijshaarigekatachtigen;
 extern const GifDescriptor frames_hellokat;
+extern const GifDescriptor frames_heart;
 
 const GifDescriptor* gifs[] = {
+  &frames_heart,
   &frames_hellokat,
   &frames_grijshaarigekatachtigen,
   &frames_catjump,
@@ -176,6 +178,8 @@ void setup() {
     pwm_clear_irq( pwm_gpio_to_slice_num(4));
   }, PICO_SHARED_IRQ_HANDLER_DEFAULT_ORDER_PRIORITY);
   irq_set_enabled(PWM_IRQ_WRAP, true);
+
+  delay(3000);
 }
 
 uint32_t gifCounter = 0;

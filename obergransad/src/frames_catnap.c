@@ -347,7 +347,7 @@ static const intptr_t frames[] = {
 	(intptr_t) (frame_17)
 };
 const GifDescriptor frames_catnap = {
-	.DisplayTime = 30,
+	.DisplayTime = 300,
 	.FrameRate = 3.000,
 	.FrameCount = 18,
 	.FrameList = (intptr_t) &frames

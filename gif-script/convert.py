@@ -4,23 +4,23 @@ import numpy as np
 import os
 
 # HEY THERE! There are some tunables!
-framerate = 30 # FPS
+framerate = 3 # FPS
 displaytime = 300 # time in seconds to display this gif.., use -1 for permanent display
-imageName = "catrotate.gif"
+imageName = "heart.webp"
 rotation = 90 #DEG
 contrast = 1.0 #1.0 = 100%
 brightness = 1.0 #1.0 = 100%
 cropArea = (
-    43, # Left (px of original image)
-    43, # Top
+    0, # Left (px of original image)
+    0, # Top
     
-    290, # Right
-    290  # Bottom
+    200, # Right
+    200  # Bottom
 ) 
 
 # Alpha key (so you can remove filled background colours)
-alphaKey = (76,35,13)
-alphaTolerance = 3 # Set to -1 to disable
+alphaKey = (255,255,255) # R,G,B (use GIMP to probe)
+alphaTolerance = 3 # Margin band for alphaKey to be used, set to -1 to disable alpha key altogether
 
 # Script :)
 def saveDebugImage(img, fn, step):
@@ -80,7 +80,7 @@ for frameID in range(frames):
     saveDebugImage(imgF, fr, "4-grayscale")
     
     # Resize to 16x16 (writes in-place)
-    imgF.thumbnail((16, 16), Resampling.NEAREST)
+    imgF.thumbnail((16, 16))
     saveDebugImage(imgF, fr, "5-resized")
     
     img = np.array(imgF)

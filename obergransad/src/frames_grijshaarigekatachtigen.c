@@ -119,7 +119,7 @@ static const intptr_t frames[] = {
 	(intptr_t) (frame_5)
 };
 const GifDescriptor frames_grijshaarigekatachtigen = {
-	.DisplayTime = 30,
+	.DisplayTime = 300,
 	.FrameRate = 2.000,
 	.FrameCount = 6,
 	.FrameList = (intptr_t) &frames
