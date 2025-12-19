@@ -192,7 +192,6 @@ void loop() {
 
   // Increment GIF every X seconds
   auto displayTime = gif->DisplayTime;
-  displayTime = 3;
   if (displayTime > 0 && 
       millis() - lastSwitch >= displayTime * 1000) {
     lastSwitch = millis();

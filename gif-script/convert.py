@@ -6,21 +6,21 @@ import os
 # HEY THERE! There are some tunables!
 framerate = 2 # FPS
 displaytime = 300 # time in seconds to display this gif.., use -1 for permanent display
-imageName = "catnap.png"
+imageName = "heart.webp"
 rotation = 90 #DEG
-contrast = 1.25 #1.0 = 100%
-brightness = 0.75 #1.0 = 100%
+contrast = 2 #1.0 = 100%
+brightness = 2.5 #1.0 = 100%
 cropArea = (
     0, # Left (px of original image)
     0, # Top
     
-    150, # Right
-    150  # Bottom
+    200, # Right
+    200  # Bottom
 ) 
 
 # Alpha key (so you can remove filled background colours)
 alphaKey = (255,255,255) # R,G,B (use GIMP to probe)
-alphaTolerance = 3 # Margin band for alphaKey to be used, set to -1 to disable alpha key altogether
+alphaTolerance = 150 # Margin band for alphaKey to be used, set to -1 to disable alpha key altogether
 
 # Script :)
 def saveDebugImage(img, fn, step):
