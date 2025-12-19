@@ -1,10 +1,27 @@
 #include <Arduino.h>
 #include <Adafruit_GFX.h>
 #include <U8g2_for_Adafruit_GFX.h>
+#include "GifDescriptor.h"
 
-extern const intptr_t frames[];
-extern const uint16_t frameCount;
-const float frameRate = 4.0f; // FPS
+// To add a new GIF to the loop, add a line with:
+// extern const GifDescriptor frames_****;
+// Replace **** with the name of GIF you just exported
+// Then add to the "gifs" array the following line:
+// &frames_****
+// With again, the name of the GIF at ****
+
+extern const GifDescriptor frames_catjump;
+extern const GifDescriptor frames_catnap;
+extern const GifDescriptor frames_grijshaarigekatachtigen;
+extern const GifDescriptor frames_hellokat;
+
+const GifDescriptor* gifs[] = {
+  &frames_hellokat,
+  &frames_grijshaarigekatachtigen,
+  &frames_catjump,
+  &frames_catnap
+};
+const size_t gifsCount = sizeof(gifs) / sizeof(gifs[0]);
 
 /*
  * Pinout:
@@ -161,13 +178,40 @@ void setup() {
   irq_set_enabled(PWM_IRQ_WRAP, true);
 }
 
+uint32_t gifCounter = 0;
 uint32_t frameCounter = 0;
-void loop() {
-  myFirstLEDMatrix.fillScreen(0);
-  
-  intptr_t frameStart = frames[frameCounter];
-  const uint8_t* frameData = reinterpret_cast<const uint8_t*>(frameStart);
+uint32_t lastSwitch = 0;
+uint32_t lastFrame = 0;
 
+void loop() {
+  const GifDescriptor* gif = gifs[gifCounter];
+
+  // Increment GIF every X seconds
+  if (gif->DisplayTime > 0 && 
+      millis() - lastSwitch >= gif->DisplayTime * 1000) {
+    lastSwitch = millis();
+    gifCounter++;
+    frameCounter = 0;
+    if (gifCounter >= gifsCount) gifCounter = 0;
+    Serial.print("Displaying GIF #");
+    Serial.println(gifCounter);
+  }
+
+  // Copy new frame of GIF to frame buffer
+  intptr_t* frameList = reinterpret_cast<intptr_t*>(gif->FrameList);
+
+  // Debug output..
+  char dbg[1024];
+  snprintf(dbg, sizeof(dbg), "Displaying GIF %lu / %lu at %p ", gifCounter, gifsCount, gif);
+  Serial.print(dbg);
+  snprintf(dbg, sizeof(dbg), "with frame %lu of %lu, with framelist at %p", frameCounter, gif->FrameCount, frameList);
+  Serial.print(dbg);
+  intptr_t frameStart = frameList[frameCounter];
+  const uint8_t* frameData = reinterpret_cast<const uint8_t*>(frameStart);
+  snprintf(dbg, sizeof(dbg), ", so frame at is %p\r\n", frameData);
+  Serial.print(dbg);
+
+  myFirstLEDMatrix.fillScreen(0);
   for (int x = 0; x < 16; x++) {
     for (int y = 0; y < 16; y++) {
       myFirstLEDMatrix.writePixel(15-y,x, frameData[x+y*16]);
@@ -175,12 +219,13 @@ void loop() {
   }
   myFirstLEDMatrix.show();
 
+  // Frame counter increase
   frameCounter++;
-  if(frameCounter >= frameCount) {
+  if(frameCounter >= gif->FrameCount) {
     frameCounter = 0;
   }
 
-  if (frameRate > 0) {
-    delay(1000 / frameRate);
-  }
+  // Delay for certain framerate
+  uint32_t nextFrame = micros() + 1000000 / gif->FrameRate;
+  while (micros() < nextFrame);
 }

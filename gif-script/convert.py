@@ -4,32 +4,24 @@ import numpy as np
 import os
 
 # HEY THERE! There are some tunables!
-imageName = "grijshaarigekatachtigen.gif"
+framerate = 30 # FPS
+displaytime = 300 # time in seconds to display this gif.., use -1 for permanent display
+imageName = "catrotate.gif"
 rotation = 90 #DEG
-contrast = 1.0
-brightness = 1.0
+contrast = 1.0 #1.0 = 100%
+brightness = 1.0 #1.0 = 100%
 cropArea = (
-    20, # Left (px of original image)
-    20, # Top
+    43, # Left (px of original image)
+    43, # Top
     
-    440, # Right
-    440  # Bottom
+    290, # Right
+    290  # Bottom
 ) 
-# Alpha key
-alphaKey = (39,39,61)
-alphaTolerance = 10
 
-# imageName = "grijshaarigekatachtigen.gif"
-# rotation = 90 #DEG
-# contrast = 2.5 # 2.5
-# brightness = 0.5 #0.5
-# cropArea = (
-#     80, # Left (px of original image)
-#     55, # Top
-    
-#     424, # Right
-#     445  # Bottom
-# ) 
+# Alpha key (so you can remove filled background colours)
+alphaKey = (76,35,13)
+alphaTolerance = 3 # Set to -1 to disable
+
 # Script :)
 def saveDebugImage(img, fn, step):
     if os.path.exists("debug/"):
@@ -38,11 +30,13 @@ def saveDebugImage(img, fn, step):
                 .replace(".bmp", "-DBG-%s.bmp"%step)
             )
 
-imgGIF = Image.open(imageName)
+imgGIF = Image.open("keep/%s"%imageName)
 frameArray = {}
 
-kaas = open("../obergransad/src/frames.c","w")
+imageFn = imageName.split(".")[0]
+kaas = open("../obergransad/src/frames_%s.c"%imageFn,"w")
 kaas.write("#include <stdint.h>\n")
+kaas.write("#include \"GifDescriptor.h\"\n")
 frames = imgGIF.n_frames
 
 # Remove old frames/debug output
@@ -119,16 +113,16 @@ for frameID in range(frames):
                 s += "0x00, "
             # s += "0x%02X, "%(y*16+x)
         s += "\n"
-    kaas.write("uint8_t frame_%s[256] = {\n%s};\n"%(name, s))
+    kaas.write("static const uint8_t frame_%s[256] = {\n%s};\n"%(name, s))
     frameArray[nameInt] = "frame_%s"%name
 
 # Sort the frames by key (glob gives random list of files)
 frameArray = {k: v for k, v in sorted(list(frameArray.items()))}
 
-frameArrayC = ", ".join([v for k,v in frameArray.items()])
+frameArrayC = ", ".join(["\n\t(intptr_t) (%s)"%v for k,v in frameArray.items()])
 frameCount = len(frameArray.keys())
-kaas.write("\n\nconst intptr_t frames[] = { %s };"%frameArrayC)
-kaas.write("\nconst uint16_t frameCount = %d;"%frameCount)
+kaas.write("\n\nstatic const intptr_t frames[] = {%s\n};"%frameArrayC)
+kaas.write("\nconst GifDescriptor frames_%s = {\n\t.DisplayTime = %.3f,\n\t.FrameRate = %.3f,\n\t.FrameCount = %d,\n\t.FrameList = (intptr_t) &frames\n};\n"%(imageFn, displaytime, framerate, frameCount))
 kaas.close()
 
 print("Saved %d frames"%frameCount)
